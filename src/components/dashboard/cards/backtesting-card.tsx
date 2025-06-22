@@ -109,7 +109,7 @@ export function BacktestingCard() {
           <span>Backtest AI Models</span>
         </CardTitle>
         <CardDescription>
-          Evaluate AI model performance with historical data.
+          Test AI strategies on historical data to see how they would have performed, helping you evaluate their effectiveness before live trading.
         </CardDescription>
       </CardHeader>
       <CardContent>
