@@ -44,6 +44,14 @@ type Signal = {
   reasoning: string;
 }
 
+const mockSignals: Signal[] = [
+    { id: 1, ticker: 'NIFTY_FUT', signal: 'BUY', confidence: 85, entryPrice: 22510.50, targetPrice: 22650.00, stopLoss: 22450.00, reasoning: 'Strong momentum and RSI crossover suggest upward potential.' },
+    { id: 2, ticker: 'BANKNIFTY_FUT', signal: 'SELL', confidence: 78, entryPrice: 48500.00, targetPrice: 48200.00, stopLoss: 48650.00, reasoning: 'Approaching a key resistance level with high volume.' },
+    { id: 3, ticker: 'RELIANCE_FUT', signal: 'BUY', confidence: 92, entryPrice: 2950.20, targetPrice: 3000.00, stopLoss: 2925.00, reasoning: 'Positive news catalyst combined with bullish chart pattern.' },
+    { id: 4, ticker: 'HDFCBANK_FUT', signal: 'SELL', confidence: 70, entryPrice: 1530.00, targetPrice: 1505.00, stopLoss: 1542.50, reasoning: 'Bearish divergence on the 15-minute chart indicates waning momentum.' },
+];
+
+
 export function PredictiveAnalysisCard() {
   const { toast } = useToast()
   const { searchQuery } = useSearch()
@@ -52,27 +60,13 @@ export function PredictiveAnalysisCard() {
   const [selectedSignal, setSelectedSignal] = React.useState<Signal | null>(null)
 
   React.useEffect(() => {
-    async function fetchSignals() {
-      setSignalsLoading(true)
-      try {
-        const response = await fetch('/api/signals');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setSignals(data);
-      } catch (error) {
-        console.error(error)
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch trade signals from the backend.",
-        })
-      }
-      setSignalsLoading(false)
-    }
-    fetchSignals()
-  }, [toast])
+    setSignalsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+        setSignals(mockSignals);
+        setSignalsLoading(false);
+    }, 700);
+  }, []);
 
   const filteredSignals = React.useMemo(() => {
     if (!searchQuery) {

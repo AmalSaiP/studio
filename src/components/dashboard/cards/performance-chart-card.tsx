@@ -45,6 +45,60 @@ const tooltipLabelFormatters: Record<string, (label: any) => string> = {
     '3m': (label) => new Date(label).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' }),
 };
 
+const generateMockData = (timeRange: string): PerformanceData[] => {
+    const toDate = new Date();
+    const data: PerformanceData[] = [];
+    let fromDate: Date;
+    let points: number;
+    let intervalMinutes: number;
+
+    switch (timeRange) {
+        case '7d':
+            fromDate = new Date();
+            fromDate.setDate(toDate.getDate() - 7);
+            points = 7;
+            intervalMinutes = 24 * 60;
+            break;
+        case '1m':
+            fromDate = new Date();
+            fromDate.setMonth(toDate.getMonth() - 1);
+            points = 30;
+            intervalMinutes = 24 * 60;
+            break;
+        case '3m':
+            fromDate = new Date();
+            fromDate.setMonth(toDate.getMonth() - 3);
+            points = 90;
+            intervalMinutes = 24 * 60;
+            break;
+        case '1d':
+        default:
+            fromDate = new Date();
+            fromDate.setHours(9, 15, 0, 0);
+            points = 25; // ~ every 15 mins for a trading day
+            intervalMinutes = 15;
+            break;
+    }
+
+    let lastValue = 22500;
+    for (let i = 0; i < points; i++) {
+        const newDate = new Date(fromDate.getTime() + i * intervalMinutes * 60000);
+        // Ensure mock data is only for today if 1d
+        if (timeRange === '1d' && newDate > new Date()) {
+            break;
+        }
+
+        const change = (Math.random() - 0.49) * 50;
+        lastValue += change;
+        data.push({
+            date: newDate.toISOString(),
+            value: parseFloat(lastValue.toFixed(2)),
+        });
+    }
+    return data;
+}
+
+
 export function PerformanceChartCard() {
   const { toast } = useToast()
   const [data, setData] = React.useState<PerformanceData[]>([])
@@ -52,28 +106,14 @@ export function PerformanceChartCard() {
   const [timeRange, setTimeRange] = React.useState("1d")
 
   React.useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-      try {
-        const response = await fetch(`/api/performance?timeRange=${timeRange}`)
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json()
-        setData(result)
-      } catch (error) {
-        console.error("Failed to fetch performance data:", error)
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch performance data from the backend.",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [timeRange, toast])
+    setLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      const mockData = generateMockData(timeRange);
+      setData(mockData);
+      setLoading(false);
+    }, 500);
+  }, [timeRange]);
 
   // Live updates for 1d view
   React.useEffect(() => {
@@ -81,33 +121,27 @@ export function PerformanceChartCard() {
       return
     }
 
-    const intervalId = setInterval(async () => {
-        // Only fetch new ticks during market hours
+    const intervalId = setInterval(() => {
         const now = new Date();
-        const marketOpenTime = new Date().setHours(9, 15, 0, 0);
-        const marketCloseTime = new Date().setHours(15, 30, 0, 0);
+        const marketOpenTime = new Date(now).setHours(9, 15, 0, 0);
+        const marketCloseTime = new Date(now).setHours(15, 30, 0, 0);
 
         if (now.getTime() < marketOpenTime || now.getTime() > marketCloseTime) {
             return;
         }
 
-        try {
-            // Instrument for NIFTY 50 Index quote
-            const response = await fetch('/api/quote?instrument=NSE:NIFTY 50');
-            if (!response.ok) return;
+        setData((prevData) => {
+            if (prevData.length === 0) return [];
+            const lastValue = prevData[prevData.length-1].value;
+            const change = (Math.random() - 0.49) * 10;
+            const newTick: PerformanceData = {
+                date: new Date().toISOString(),
+                value: parseFloat((lastValue + change).toFixed(2)),
+            };
 
-            const newTick = await response.json();
-            
-            setData((prevData) => {
-                if (prevData.length > 0 && prevData[prevData.length - 1].value === newTick.value) {
-                    return prevData;
-                }
-                const newData = [...prevData, newTick];
-                return newData.length > 150 ? newData.slice(1) : newData; // Keep array size reasonable
-            });
-        } catch (error) {
-            console.warn("Failed to fetch live tick:", error);
-        }
+            const newData = [...prevData, newTick];
+            return newData.length > 150 ? newData.slice(1) : newData; // Keep array size reasonable
+        });
     }, 5000) // Poll every 5 seconds
 
     return () => clearInterval(intervalId)
