@@ -11,13 +11,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowUp, ArrowDown, Sparkles, Lightbulb, TrendingUp, TrendingDown, Target } from "lucide-react"
+import { ArrowUp, ArrowDown, Sparkles, Lightbulb, TrendingUp, TrendingDown, Target, AlertTriangle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -60,13 +53,29 @@ export function PredictiveAnalysisCard() {
   const [selectedSignal, setSelectedSignal] = React.useState<Signal | null>(null)
 
   React.useEffect(() => {
-    setSignalsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-        setSignals(mockSignals);
+    async function fetchSignals() {
+      setSignalsLoading(true);
+      try {
+        const response = await fetch('/api/signals');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        setSignals(data);
+      } catch (error) {
+        console.error("Failed to fetch signals:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not fetch AI signals. Showing default data.",
+        });
+        setSignals(mockSignals); // Fallback to mock data
+      } finally {
         setSignalsLoading(false);
-    }, 700);
-  }, []);
+      }
+    }
+    fetchSignals();
+  }, [toast]);
 
   const filteredSignals = React.useMemo(() => {
     if (!searchQuery) {
@@ -177,6 +186,16 @@ export function PredictiveAnalysisCard() {
             <div>
               <h4 className="font-semibold mb-2">Model Reasoning</h4>
               <p className="text-sm text-muted-foreground">{selectedSignal?.reasoning}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+                <h4 className="text-sm font-semibold flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="size-4" />
+                    Important Disclaimer
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                    Signals are for informational purposes and not financial advice. The algorithm uses historical data and technical indicators, which do not guarantee future performance. All trading involves risk.
+                </p>
             </div>
           </div>
         </DialogContent>
