@@ -4,7 +4,7 @@
  *
  * It is important that this file is imported before any other Genkit files.
  */
-import {genkit} from '@genkit-ai/ai';
+import {genkit as initGenkit} from '@genkit-ai/ai';
 import {googleAI} from '@genkit-ai/googleai';
 
 // IMPORTANT: Set your Google AI API key in the .env file.
@@ -16,7 +16,7 @@ if (!genkitKey) {
   );
 }
 
-export const ai = genkit({
+export const ai = initGenkit({
   plugins: [
     googleAI({
       apiKey: genkitKey,
