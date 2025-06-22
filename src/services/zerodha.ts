@@ -145,7 +145,7 @@ export async function getTradeSignals() {
             entryPrice: 1680.00,
             targetPrice: 1640.00,
             stopLoss: 1695.00,
-            reasoning: 'Price broke below a key support level and the 200-day moving average, indicating a bearish trend.',
+            reasoning: 'Price broke below a key support level and the 200-day moving average, a strong bearish signal.',
         }
     ];
 
