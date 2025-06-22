@@ -20,21 +20,26 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 // --- MOCK DATA GENERATION ---
 
-function generateIntradaySeries(startDate: Date, numPoints: number, intervalMinutes: number) {
+// Generates a series for a trading day starting at 9:15 AM.
+function generateIntradaySeries(baseValue: number, numPoints: number, intervalMinutes: number) {
     const data = [];
-    let currentDate = new Date(startDate);
-    let currentValue = 22500 + (Math.random() - 0.5) * 50;
+    const marketOpen = new Date();
+    marketOpen.setHours(9, 15, 0, 0);
+
+    let currentDate = new Date(marketOpen);
+    let currentValue = baseValue;
 
     for (let i = 0; i < numPoints; i++) {
         data.push({
             date: currentDate.toISOString(),
             value: parseFloat(currentValue.toFixed(2)),
         });
-        currentValue += (Math.random() - 0.5) * 20;
+        currentValue += (Math.random() - 0.5) * 20; // Simulate price fluctuation
         currentDate = new Date(currentDate.getTime() + intervalMinutes * 60000);
     }
     return data;
 }
+
 
 function generateDailySeries(endDate: Date, numDays: number) {
     const data = [];
@@ -80,13 +85,41 @@ async function getPerformanceData(instrument: string, timeRange: string) {
             return generateWeeklySeries(now, 12);
         case '1d':
         default:
-            const marketOpen = new Date(now.setHours(9, 15, 0, 0));
-            return generateIntradaySeries(marketOpen, 50, 15); // 50 points, 15 min interval
+            const marketOpen = new Date();
+            marketOpen.setHours(9, 15, 0, 0);
+            const marketClose = new Date();
+            marketClose.setHours(15, 30, 0, 0);
+
+            // If market is closed for the day, show the full day's data
+            if (now > marketClose) {
+                return generateIntradaySeries(22500, 26, 15); // 26 points for a full 9:15-15:30 day at 15min intervals
+            }
+            // If market is not yet open, show a single point at open time
+            if (now < marketOpen) {
+                return [{ date: marketOpen.toISOString(), value: 22500 }];
+            }
+            // If market is open, generate data up to the current time
+            const minutesSinceOpen = (now.getTime() - marketOpen.getTime()) / 60000;
+            const pointsToGenerate = Math.floor(minutesSinceOpen / 15) + 1;
+            return generateIntradaySeries(22500, pointsToGenerate, 15);
     }
 }
 
 async function getLatestTick(instrument: string, currentValue: number) {
     console.log(`Fetching latest tick for ${instrument}`);
+    
+    const now = new Date();
+    const marketOpenTime = new Date().setHours(9, 15, 0, 0);
+    const marketCloseTime = new Date().setHours(15, 30, 0, 0);
+    
+    // If market is closed, don't generate a new value
+    if (now.getTime() < marketOpenTime || now.getTime() > marketCloseTime) {
+         return {
+            date: new Date().toISOString(),
+            value: currentValue
+        };
+    }
+
     // No latency for ticks to feel "live"
     const change = (Math.random() - 0.5) * 5;
     const newValue = currentValue + change;
@@ -110,7 +143,7 @@ type PerformanceData = {
 }
 
 const axisFormatters: Record<string, (value: any) => string> = {
-    '1d': (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    '1d': (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
     '7d': (value) => new Date(value).toLocaleDateString([], { weekday: 'short' }),
     '1m': (value) => new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' }),
     '3m': (value) => new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' }),
@@ -145,12 +178,17 @@ export function PerformanceChartCard() {
     }
 
     const intervalId = setInterval(async () => {
-      const latestValue = data[data.length - 1].value
-      const newTick = await getLatestTick("NIFTY 50", latestValue)
-      setData((prevData) => {
-        const newData = [...prevData.slice(-49), newTick]
-        return newData
-      })
+      const latestValue = data[data.length - 1].value;
+      const newTick = await getLatestTick("NIFTY 50", latestValue);
+      
+      // Only update state if the market is open and the value changed
+      if (newTick.value !== latestValue) {
+         setData((prevData) => {
+            const newData = [...prevData, newTick];
+            // Don't let the array grow indefinitely, keep last ~100 points
+            return newData.length > 100 ? newData.slice(1) : newData;
+         });
+      }
     }, 5000) // 5 seconds
 
     return () => clearInterval(intervalId)
@@ -212,6 +250,7 @@ export function PerformanceChartCard() {
                   axisLine={false}
                   tickMargin={8}
                   tickFormatter={axisFormatters[timeRange]}
+                  interval="preserveStartEnd"
                 />
                 <YAxis 
                     domain={['dataMin - 10', 'dataMax + 10']} 
