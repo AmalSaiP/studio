@@ -31,6 +31,7 @@ import { getTradeSignals } from "@/services/zerodha"
 import { generateTradeSignalExplanation } from "@/ai/flows/generate-trade-signal-explanation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 type Signal = {
   id: number;
@@ -128,8 +129,7 @@ export function PredictiveAnalysisCard() {
                     <TableCell className="font-medium">{signal.ticker}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={signal.signal === "BUY" ? "default" : "destructive"}
-                        className={signal.signal === "BUY" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+                        variant={signal.signal === "BUY" ? "success" : "destructive"}
                       >
                         {signal.signal === "BUY" ? <ArrowUp className="mr-1 size-3" /> : <ArrowDown className="mr-1 size-3" />}
                         {signal.signal}
@@ -157,7 +157,7 @@ export function PredictiveAnalysisCard() {
                 AI Signal Explanation for {selectedSignal?.ticker}
             </DialogTitle>
             <DialogDescription>
-                Signal: <span className={selectedSignal?.signal === 'BUY' ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>{selectedSignal?.signal}</span>
+                Signal: <span className={cn("font-semibold", selectedSignal?.signal === 'BUY' ? "text-emerald-500" : "text-destructive")}>{selectedSignal?.signal}</span>
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

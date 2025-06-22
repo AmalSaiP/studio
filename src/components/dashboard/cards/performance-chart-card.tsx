@@ -31,6 +31,20 @@ type PerformanceData = {
     value: number;
 }
 
+const axisFormatters: Record<string, (value: any) => string> = {
+    '1d': (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    '7d': (value) => new Date(value).toLocaleDateString([], { weekday: 'short' }),
+    '1m': (value) => new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+    '3m': (value) => new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+};
+
+const tooltipLabelFormatters: Record<string, (label: any) => string> = {
+    '1d': (label) => new Date(label).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+    '7d': (label) => new Date(label).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }),
+    '1m': (label) => new Date(label).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' }),
+    '3m': (label) => new Date(label).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' }),
+};
+
 export function PerformanceChartCard() {
   const [data, setData] = React.useState<PerformanceData[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -47,9 +61,9 @@ export function PerformanceChartCard() {
   }, [timeRange])
 
   const latestData = data[data.length - 1];
-  const previousData = data[data.length - 2];
+  const previousData = data[data.length - 2] ?? data[data.length - 1];
   const change = latestData && previousData ? latestData.value - previousData.value : 0;
-  const percentageChange = latestData && previousData ? (change / previousData.value) * 100 : 0;
+  const percentageChange = latestData && previousData && previousData.value !== 0 ? (change / previousData.value) * 100 : 0;
   const isPositive = change >= 0;
 
   return (
@@ -77,13 +91,13 @@ export function PerformanceChartCard() {
         {loading ? (
            <div className="space-y-4">
             <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-[256px] w-full" />
            </div>
         ) : (
           <>
             <div className="flex items-baseline gap-2">
                 <h2 className="text-3xl font-bold">{latestData?.value.toFixed(2)}</h2>
-                <p className={`text-sm font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                <p className={`text-sm font-medium ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
                   {isPositive ? '+' : ''}{change.toFixed(2)} ({percentageChange.toFixed(2)}%)
                 </p>
             </div>
@@ -101,7 +115,7 @@ export function PerformanceChartCard() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  tickFormatter={(value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  tickFormatter={axisFormatters[timeRange]}
                 />
                 <YAxis 
                     domain={['dataMin - 10', 'dataMax + 10']} 
@@ -111,7 +125,17 @@ export function PerformanceChartCard() {
                     cursor={{ stroke: 'hsl(var(--accent))', strokeWidth: 2, strokeDasharray: "3 3" }}
                     content={<ChartTooltipContent 
                         indicator="dot"
-                        labelFormatter={(label, payload) => payload?.[0] && `Value: ${payload[0].value.toFixed(2)}`}
+                        labelKey="date"
+                        labelFormatter={(label, payload) => {
+                           if (!payload || !payload.length) return null;
+                           const point = payload[0].payload;
+                           return (
+                             <div className="space-y-1">
+                               <p className="font-semibold">{point.value.toFixed(2)}</p>
+                               <p className="text-xs text-muted-foreground">{tooltipLabelFormatters[timeRange](point.date)}</p>
+                             </div>
+                           )
+                        }}
                     />} 
                 />
                 <Area

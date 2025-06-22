@@ -15,20 +15,36 @@ import { Nav } from "@/components/dashboard/nav"
 import { Header } from "@/components/dashboard/header"
 import { Logo } from "@/components/icons/logo"
 import { Separator } from "@/components/ui/separator"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { BellRing, KeyRound, Save } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
+  const { toast } = useToast()
   const [isMounted, setIsMounted] = React.useState(false)
+  const [apiKey, setApiKey] = React.useState("9mhowz0mpnfltqpm")
+  const [apiSecret, setApiSecret] = React.useState("qxoqq4ew35qv4xsklg5zk2zvudcfn9zg")
+  const [alerts, setAlerts] = React.useState({
+    buySell: false,
+    volatility: false,
+    breakouts: true,
+  })
 
   React.useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  const handleSave = () => {
+    console.log("Saving settings:", { apiKey, apiSecret, alerts })
+    toast({
+      title: "Settings Saved",
+      description: "Your changes have been successfully saved.",
+    })
+  }
 
   if (!isMounted) {
     return null
@@ -76,11 +92,11 @@ export default function SettingsPage() {
                         </h3>
                         <div className="space-y-2">
                         <Label htmlFor="api-key">API Key</Label>
-                        <Input id="api-key" type="password" placeholder="Enter your API key" />
+                        <Input id="api-key" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="api-secret">API Secret</Label>
-                        <Input id="api-secret" type="password" placeholder="Enter your API secret" />
+                        <Input id="api-secret" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} />
                         </div>
                     </div>
                     <Separator />
@@ -91,35 +107,35 @@ export default function SettingsPage() {
                         </h3>
                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
                         <div className="space-y-0.5">
-                            <Label>AI Buy/Sell Signals</Label>
+                            <Label htmlFor="buy-sell-switch">AI Buy/Sell Signals</Label>
                             <p className="text-xs text-muted-foreground">
                             Notify on new high-confidence signals.
                             </p>
                         </div>
-                        <Switch />
+                        <Switch id="buy-sell-switch" checked={alerts.buySell} onCheckedChange={(checked) => setAlerts(prev => ({...prev, buySell: checked}))} />
                         </div>
                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
                         <div className="space-y-0.5">
-                            <Label>Volatility Spike</Label>
+                            <Label htmlFor="volatility-switch">Volatility Spike</Label>
                             <p className="text-xs text-muted-foreground">
                             Alert when IV increases significantly.
                             </p>
                         </div>
-                        <Switch />
+                        <Switch id="volatility-switch" checked={alerts.volatility} onCheckedChange={(checked) => setAlerts(prev => ({...prev, volatility: checked}))} />
                         </div>
                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
                         <div className="space-y-0.5">
-                            <Label>Price Breakouts</Label>
+                            <Label htmlFor="breakouts-switch">Price Breakouts</Label>
                             <p className="text-xs text-muted-foreground">
                             Notify when price crosses key levels.
                             </p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch id="breakouts-switch" checked={alerts.breakouts} onCheckedChange={(checked) => setAlerts(prev => ({...prev, breakouts: checked}))} />
                         </div>
                     </div>
                     </CardContent>
                     <CardFooter>
-                        <Button>
+                        <Button onClick={handleSave}>
                             <Save className="mr-2 size-4" />
                             Save Changes
                         </Button>

@@ -4,41 +4,12 @@
 // This is a mock service to simulate Zerodha Kite Connect API.
 // In a real application, you would use the Kite Connect client here.
 
-const MOCK_API_LATENCY = 1000; // 1 second
+const MOCK_API_LATENCY = 500; // 0.5 second
 
 // Check if API keys are set (for simulation purposes)
 if (!process.env.ZERODHA_API_KEY || !process.env.ZERODHA_API_SECRET) {
   console.warn("Zerodha API key/secret not found in .env. Using mock service without auth check.");
 }
-
-const performanceData = [
-    { date: '2024-07-29T09:15:00', value: 22450.55 },
-    { date: '2024-07-29T09:30:00', value: 22465.20 },
-    { date: '2024-07-29T09:45:00', value: 22458.90 },
-    { date: '2024-07-29T10:00:00', value: 22475.10 },
-    { date: '2024-07-29T10:15:00', value: 22480.30 },
-    { date: '2024-07-29T10:30:00', value: 22495.60 },
-    { date: '2024-07-29T10:45:00', value: 22510.75 },
-    { date: '2024-07-29T11:00:00', value: 22505.40 },
-    { date: '2024-07-29T11:15:00', value: 22515.80 },
-    { date: '2024-07-29T11:30:00', value: 22520.10 },
-    { date: '2024-07-29T11:45:00', value: 22512.95 },
-    { date: '2024-07-29T12:00:00', value: 22498.25 },
-    { date: '2024-07-29T12:15:00', value: 22485.50 },
-    { date: '2024-07-29T12:30:00', value: 22490.80 },
-    { date: '2024-07-29T12:45:00', value: 22501.90 },
-    { date: '2024-07-29T13:00:00', value: 22508.30 },
-    { date: '2024-07-29T13:15:00', value: 22499.00 },
-    { date: '2024-07-29T13:30:00', value: 22518.70 },
-    { date: '2024-07-29T13:45:00', value: 22515.45 },
-    { date: '2024-07-29T14:00:00', value: 22525.60 },
-    { date: '2024-07-29T14:15:00', value: 22530.15 },
-    { date: '2024-07-29T14:30:00', value: 22522.80 },
-    { date: '2024-07-29T14:45:00', value: 22510.50 },
-    { date: '2024-07-29T15:00:00', value: 22500.20 },
-    { date: '2024-07-29T15:15:00', value: 22495.90 },
-    { date: '2024-07-29T15:30:00', value: 22504.45 },
-];
 
 const tradeSignals = [
     {
@@ -71,12 +42,74 @@ const tradeSignals = [
     },
 ];
 
+// --- MOCK DATA GENERATION ---
+
+function generateIntradaySeries(startDate: Date, numPoints: number, intervalMinutes: number) {
+    const data = [];
+    let currentDate = new Date(startDate);
+    let currentValue = 22500 + (Math.random() - 0.5) * 50;
+
+    for (let i = 0; i < numPoints; i++) {
+        data.push({
+            date: currentDate.toISOString(),
+            value: parseFloat(currentValue.toFixed(2)),
+        });
+        currentValue += (Math.random() - 0.5) * 20;
+        currentDate = new Date(currentDate.getTime() + intervalMinutes * 60000);
+    }
+    return data;
+}
+
+function generateDailySeries(endDate: Date, numDays: number) {
+    const data = [];
+    let currentDate = new Date(endDate);
+    let currentValue = 22500 + (Math.random() - 0.5) * 500;
+
+    for (let i = 0; i < numDays; i++) {
+        data.unshift({
+            date: new Date(currentDate.setDate(currentDate.getDate() - 1)).toISOString(),
+            value: parseFloat(currentValue.toFixed(2)),
+        });
+        currentValue += (Math.random() - 0.5) * 150;
+    }
+    return data;
+}
+
+function generateWeeklySeries(endDate: Date, numWeeks: number) {
+    const data = [];
+    let currentDate = new Date(endDate);
+     let currentValue = 22000 + (Math.random() - 0.5) * 1000;
+
+    for (let i = 0; i < numWeeks; i++) {
+        data.unshift({
+            date: new Date(currentDate.setDate(currentDate.getDate() - 7)).toISOString(),
+            value: parseFloat(currentValue.toFixed(2)),
+        });
+        currentValue += (Math.random() - 0.5) * 300;
+    }
+    return data;
+}
+
+
+// --- API FUNCTIONS ---
+
 export async function getPerformanceData(instrument: string, timeRange: string) {
     console.log(`Fetching performance data for ${instrument} (${timeRange})`);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, MOCK_API_LATENCY));
-    // In a real app, you'd filter/fetch data based on parameters
-    return performanceData;
+    
+    const now = new Date();
+    switch (timeRange) {
+        case '7d':
+            return generateDailySeries(now, 7);
+        case '1m':
+            return generateDailySeries(now, 30);
+        case '3m':
+            return generateWeeklySeries(now, 12);
+        case '1d':
+        default:
+            const marketOpen = new Date(now.setHours(9, 15, 0, 0));
+            return generateIntradaySeries(marketOpen, 25, 15); // 25 points, 15 min interval
+    }
 }
 
 export async function getTradeSignals() {

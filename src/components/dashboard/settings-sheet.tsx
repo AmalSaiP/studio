@@ -1,4 +1,7 @@
 
+"use client"
+
+import * as React from "react"
 import {
   Sheet,
   SheetContent,
@@ -13,12 +16,30 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { KeyRound, BellRing, Save } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 type Props = {
   children: React.ReactNode
 }
 
 export function SettingsSheet({ children }: Props) {
+  const { toast } = useToast()
+  const [apiKey, setApiKey] = React.useState("9mhowz0mpnfltqpm")
+  const [apiSecret, setApiSecret] = React.useState("qxoqq4ew35qv4xsklg5zk2zvudcfn9zg")
+  const [alerts, setAlerts] = React.useState({
+    buySell: false,
+    volatility: false,
+    breakouts: true,
+  })
+
+  const handleSave = () => {
+    console.log("Saving settings from sheet:", { apiKey, apiSecret, alerts })
+    toast({
+      title: "Settings Saved",
+      description: "Your changes have been successfully saved.",
+    })
+  }
+
   return (
     <Sheet>
       <SheetTrigger asChild>{children}</SheetTrigger>
@@ -36,12 +57,12 @@ export function SettingsSheet({ children }: Props) {
               Zerodha Integration
             </h3>
             <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
-              <Input id="api-key" type="password" placeholder="Enter your API key" />
+              <Label htmlFor="sheet-api-key">API Key</Label>
+              <Input id="sheet-api-key" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="api-secret">API Secret</Label>
-              <Input id="api-secret" type="password" placeholder="Enter your API secret" />
+              <Label htmlFor="sheet-api-secret">API Secret</Label>
+              <Input id="sheet-api-secret" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} />
             </div>
           </div>
           <Separator />
@@ -52,34 +73,34 @@ export function SettingsSheet({ children }: Props) {
             </h3>
             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">
-                <Label>AI Buy/Sell Signals</Label>
+                <Label htmlFor="sheet-buy-sell-switch">AI Buy/Sell Signals</Label>
                 <p className="text-xs text-muted-foreground">
                   Notify on new high-confidence signals.
                 </p>
               </div>
-              <Switch />
+              <Switch id="sheet-buy-sell-switch" checked={alerts.buySell} onCheckedChange={(checked) => setAlerts(prev => ({...prev, buySell: checked}))} />
             </div>
              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">
-                <Label>Volatility Spike</Label>
+                <Label htmlFor="sheet-volatility-switch">Volatility Spike</Label>
                 <p className="text-xs text-muted-foreground">
                   Alert when IV increases significantly.
                 </p>
               </div>
-              <Switch />
+              <Switch id="sheet-volatility-switch" checked={alerts.volatility} onCheckedChange={(checked) => setAlerts(prev => ({...prev, volatility: checked}))} />
             </div>
              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">
-                <Label>Price Breakouts</Label>
+                <Label htmlFor="sheet-breakouts-switch">Price Breakouts</Label>
                 <p className="text-xs text-muted-foreground">
                   Notify when price crosses key levels.
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch id="sheet-breakouts-switch" checked={alerts.breakouts} onCheckedChange={(checked) => setAlerts(prev => ({...prev, breakouts: checked}))} />
             </div>
           </div>
         </div>
-         <Button className="w-full">
+         <Button className="w-full" onClick={handleSave}>
             <Save className="mr-2 size-4" />
             Save Changes
         </Button>

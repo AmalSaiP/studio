@@ -58,17 +58,23 @@ export function Header() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 size-4" />
-              <span>Profile</span>
+            <DropdownMenuItem asChild>
+              <a href="/settings">
+                <User className="mr-2 size-4" />
+                <span>Profile</span>
+              </a>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <LayoutGrid className="mr-2 size-4" />
-              <span>Dashboard</span>
+            <DropdownMenuItem asChild>
+              <a href="/">
+                <LayoutGrid className="mr-2 size-4" />
+                <span>Dashboard</span>
+              </a>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 size-4" />
-              <span>Settings</span>
+            <DropdownMenuItem asChild>
+              <a href="/settings">
+                <Settings className="mr-2 size-4" />
+                <span>Settings</span>
+              </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>

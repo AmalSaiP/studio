@@ -194,6 +194,7 @@ export function BacktestingCard() {
           <div className="w-full space-y-2">
             <p className="text-sm text-muted-foreground">Processing historical data...</p>
             <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
           </div>
         )}
         {results && (
@@ -203,7 +204,7 @@ export function BacktestingCard() {
             <AlertDescription className="mt-2 space-y-1">
               <p>
                 <strong>Net P&L:</strong>{" "}
-                <span className={results.pnl >= 0 ? "text-green-600" : "text-destructive"}>
+                <span className={cn("font-semibold", results.pnl >= 0 ? "text-emerald-500" : "text-destructive")}>
                   ₹{results.pnl.toFixed(2)}
                 </span>
               </p>
