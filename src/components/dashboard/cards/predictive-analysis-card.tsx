@@ -26,17 +26,21 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowUp, ArrowDown, Sparkles, Lightbulb } from "lucide-react"
+import { ArrowUp, ArrowDown, Sparkles, Lightbulb, TrendingUp, TrendingDown, Target } from "lucide-react"
 import { getTradeSignals } from "@/services/zerodha"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { Separator } from "@/components/ui/separator"
 
 type Signal = {
   id: number;
   ticker: string;
-  signal: string;
+  signal: 'BUY' | 'SELL';
   confidence: number;
+  entryPrice: number;
+  targetPrice: number;
+  stopLoss: number;
   reasoning: string;
 }
 
@@ -45,7 +49,6 @@ export function PredictiveAnalysisCard() {
   const [signals, setSignals] = React.useState<Signal[]>([])
   const [signalsLoading, setSignalsLoading] = React.useState(true)
   const [selectedSignal, setSelectedSignal] = React.useState<Signal | null>(null)
-  const [explanation, setExplanation] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     async function fetchSignals() {
@@ -66,9 +69,8 @@ export function PredictiveAnalysisCard() {
     fetchSignals()
   }, [toast])
 
-  const handleExplainClick = (signal: Signal) => {
+  const handleDetailsClick = (signal: Signal) => {
     setSelectedSignal(signal)
-    setExplanation(signal.reasoning)
   }
 
   return (
@@ -80,7 +82,7 @@ export function PredictiveAnalysisCard() {
             <span>Predictive Analysis</span>
           </CardTitle>
           <CardDescription>
-            ML-generated signals based on historical data.
+            High-conviction trade signals with entry, target, and stop-loss levels.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,7 +99,9 @@ export function PredictiveAnalysisCard() {
                 <TableRow>
                   <TableHead>Ticker</TableHead>
                   <TableHead>Signal</TableHead>
-                  <TableHead className="text-right">Confidence</TableHead>
+                  <TableHead className="text-right">Entry</TableHead>
+                  <TableHead className="text-right">Target</TableHead>
+                  <TableHead className="text-right">Stop Loss</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -113,9 +117,11 @@ export function PredictiveAnalysisCard() {
                         {signal.signal}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{signal.confidence}%</TableCell>
+                    <TableCell className="text-right font-mono">₹{signal.entryPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-500">₹{signal.targetPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-mono text-red-600 dark:text-red-500">₹{signal.stopLoss.toFixed(2)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleExplainClick(signal)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleDetailsClick(signal)}>
                         Details
                       </Button>
                     </TableCell>
@@ -128,21 +134,36 @@ export function PredictiveAnalysisCard() {
       </Card>
 
       <Dialog open={!!selectedSignal} onOpenChange={(open) => !open && setSelectedSignal(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-headline flex items-center gap-2">
                 <Lightbulb className="text-primary"/>
-                Signal Details for {selectedSignal?.ticker}
+                Signal Details: {selectedSignal?.ticker}
             </DialogTitle>
-            <DialogDescription>
-                Signal: <span className={cn("font-semibold", selectedSignal?.signal === 'BUY' ? "text-emerald-500" : "text-destructive")}>{selectedSignal?.signal}</span>
-                {' | '}
-                Confidence: {selectedSignal?.confidence}%
+             <DialogDescription>
+                A <span className={cn("font-semibold", selectedSignal?.signal === 'BUY' ? "text-emerald-500" : "text-destructive")}>{selectedSignal?.signal === 'BUY' ? 'long' : 'short'}</span> opportunity with {selectedSignal?.confidence}% confidence.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <h4 className="font-semibold mb-2">Model Reasoning:</h4>
-            {explanation && <p className="text-sm text-muted-foreground">{explanation}</p>}
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><TrendingUp className="size-3"/>Entry Price</p>
+                <p className="font-bold text-lg">₹{selectedSignal?.entryPrice.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Target className="size-3"/>Target Price</p>
+                <p className="font-bold text-lg text-emerald-500">₹{selectedSignal?.targetPrice.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><TrendingDown className="size-3"/>Stop Loss</p>
+                <p className="font-bold text-lg text-red-500">₹{selectedSignal?.stopLoss.toFixed(2)}</p>
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <h4 className="font-semibold mb-2">Model Reasoning</h4>
+              <p className="text-sm text-muted-foreground">{selectedSignal?.reasoning}</p>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
