@@ -19,6 +19,7 @@ import { OptionsAnalyzerCard } from "@/components/dashboard/cards/options-analyz
 import { BacktestingCard } from "@/components/dashboard/cards/backtesting-card"
 import { Logo } from "@/components/icons/logo"
 import { Separator } from "@/components/ui/separator"
+import { SearchProvider } from "@/context/search-provider"
 
 export default function Dashboard() {
   const [isMounted, setIsMounted] = React.useState(false)
@@ -32,44 +33,46 @@ export default function Dashboard() {
   }
 
   return (
-    <SidebarProvider defaultOpen>
-      <div className="md:grid md:grid-cols-[auto,1fr]">
-        <Sidebar collapsible="icon" className="group-data-[collapsible=icon]:border-r">
-          <SidebarHeader>
-            <div className="flex h-10 items-center gap-2.5 px-2">
-              <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />
-              <Logo />
-              <h1 className="font-headline text-lg font-bold group-data-[collapsible=icon]:hidden">
-                F&O Edge
-              </h1>
-            </div>
-          </SidebarHeader>
-          <SidebarContent>
-            <Nav />
-          </SidebarContent>
-          <SidebarFooter className="group-data-[collapsible=icon]:hidden">
-            <Separator className="mb-2" />
-            <p className="px-2 text-xs text-muted-foreground">
-              © {new Date().getFullYear()} F&O Edge
-            </p>
-          </SidebarFooter>
-        </Sidebar>
-        <SidebarInset>
-          <Header />
-          <main className="p-4 lg:p-6">
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-              <div className="space-y-6">
-                <PerformanceChartCard />
-                <OptionsAnalyzerCard />
+    <SearchProvider>
+      <SidebarProvider defaultOpen>
+        <div className="md:grid md:grid-cols-[auto,1fr]">
+          <Sidebar collapsible="icon" className="group-data-[collapsible=icon]:border-r">
+            <SidebarHeader>
+              <div className="flex h-10 items-center gap-2.5 px-2">
+                <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />
+                <Logo />
+                <h1 className="font-headline text-lg font-bold group-data-[collapsible=icon]:hidden">
+                  F&O Edge
+                </h1>
               </div>
-              <div className="space-y-6">
-                <PredictiveAnalysisCard />
-                <BacktestingCard />
+            </SidebarHeader>
+            <SidebarContent>
+              <Nav />
+            </SidebarContent>
+            <SidebarFooter className="group-data-[collapsible=icon]:hidden">
+              <Separator className="mb-2" />
+              <p className="px-2 text-xs text-muted-foreground">
+                © {new Date().getFullYear()} F&O Edge
+              </p>
+            </SidebarFooter>
+          </Sidebar>
+          <SidebarInset>
+            <Header />
+            <main className="p-4 lg:p-6">
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <div className="space-y-6">
+                  <PerformanceChartCard />
+                  <OptionsAnalyzerCard />
+                </div>
+                <div className="space-y-6">
+                  <PredictiveAnalysisCard />
+                  <BacktestingCard />
+                </div>
               </div>
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </SearchProvider>
   )
 }

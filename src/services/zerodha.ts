@@ -124,6 +124,17 @@ export async function getPerformanceData(instrument: string, timeRange: string) 
     }
 }
 
+export async function getLatestTick(instrument: string, currentValue: number) {
+    console.log(`Fetching latest tick for ${instrument}`);
+    // No latency for ticks to feel "live"
+    const change = (Math.random() - 0.5) * 5;
+    const newValue = currentValue + change;
+    return {
+        date: new Date().toISOString(),
+        value: parseFloat(newValue.toFixed(2)),
+    }
+}
+
 export async function getTradeSignals() {
     console.log('Fetching trade signals');
     await new Promise(resolve => setTimeout(resolve, MOCK_API_LATENCY / 2));

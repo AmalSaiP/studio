@@ -22,8 +22,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SettingsSheet } from "./settings-sheet"
+import { useSearch } from "@/context/search-provider"
 
 export function Header() {
+  const { setSearchQuery } = useSearch()
+  
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <SidebarTrigger className="md:hidden" />
@@ -34,6 +37,7 @@ export function Header() {
             type="search"
             placeholder="Search stocks or F&O..."
             className="w-full rounded-lg bg-muted pl-8 md:w-[200px] lg:w-[320px]"
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <SettingsSheet>

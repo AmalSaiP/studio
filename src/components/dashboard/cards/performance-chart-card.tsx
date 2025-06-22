@@ -15,7 +15,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { CandlestickChart } from "lucide-react"
-import { getPerformanceData } from "@/services/zerodha"
+import { getPerformanceData, getLatestTick } from "@/services/zerodha"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -59,6 +59,24 @@ export function PerformanceChartCard() {
     }
     fetchData()
   }, [timeRange])
+
+  // Live updates for 1d view
+  React.useEffect(() => {
+    if (timeRange !== '1d' || loading || data.length === 0) {
+      return
+    }
+
+    const intervalId = setInterval(async () => {
+      const latestValue = data[data.length - 1].value
+      const newTick = await getLatestTick("NIFTY 50", latestValue)
+      setData((prevData) => {
+        const newData = [...prevData.slice(-49), newTick]
+        return newData
+      })
+    }, 5000) // 5 seconds
+
+    return () => clearInterval(intervalId)
+  }, [timeRange, loading, data])
 
   const latestData = data[data.length - 1];
   const previousData = data[data.length - 2] ?? data[data.length - 1];

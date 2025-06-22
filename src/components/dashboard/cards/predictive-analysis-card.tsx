@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
+import { useSearch } from "@/context/search-provider"
 
 type Signal = {
   id: number;
@@ -46,6 +47,7 @@ type Signal = {
 
 export function PredictiveAnalysisCard() {
   const { toast } = useToast()
+  const { searchQuery } = useSearch()
   const [signals, setSignals] = React.useState<Signal[]>([])
   const [signalsLoading, setSignalsLoading] = React.useState(true)
   const [selectedSignal, setSelectedSignal] = React.useState<Signal | null>(null)
@@ -68,6 +70,15 @@ export function PredictiveAnalysisCard() {
     }
     fetchSignals()
   }, [toast])
+
+  const filteredSignals = React.useMemo(() => {
+    if (!searchQuery) {
+      return signals;
+    }
+    return signals.filter(signal =>
+      signal.ticker.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [signals, searchQuery]);
 
   const handleDetailsClick = (signal: Signal) => {
     setSelectedSignal(signal)
@@ -106,7 +117,7 @@ export function PredictiveAnalysisCard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {signals.map((signal) => (
+                {filteredSignals.length > 0 ? filteredSignals.map((signal) => (
                   <TableRow key={signal.id}>
                     <TableCell className="font-medium">{signal.ticker}</TableCell>
                     <TableCell>
@@ -126,7 +137,13 @@ export function PredictiveAnalysisCard() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center">
+                      No signals match your search.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           )}
