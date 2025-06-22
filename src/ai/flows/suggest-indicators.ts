@@ -48,37 +48,18 @@ const prompt = ai.definePrompt({
   name: 'suggestIndicatorsPrompt',
   input: {schema: SuggestIndicatorsInputSchema},
   output: {schema: SuggestIndicatorsOutputSchema},
-  prompt: `You are an AI assistant that provides recommendations for technical indicators and strategies based on the user's trading goals, experience level, and asset type.
+  prompt: `You are an expert financial advisor AI. Based on the user profile below, recommend technical indicators, trading strategies, and explain your reasoning.
 
-  Trading Goals: {{{tradingGoals}}}
-  Experience Level: {{{experienceLevel}}}
-  Asset Type: {{{assetType}}}
-
-  Based on this information, provide a list of relevant technical indicators, trading strategies, and an explanation for each recommendation.
-  Respond in JSON format.
-  Ensure the indicators and strategies align with the user's provided trading goals, experience level, and asset type.
-  Do not recommend indicators or strategies that are not relevant to the user's goals or experience level.
-  Do not include examples in your response.
-  Do not respond as a conversational chatbot.
-  Remember, you MUST respond in JSON format.
-  Do not wrap your JSON response in markdown or code blocks.
-  `,config: {
+  User Profile:
+  - Trading Goals: {{{tradingGoals}}}
+  - Experience Level: {{{experienceLevel}}}
+  - Asset Type: {{{assetType}}}
+  `,
+  config: {
     safetySettings: [
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
       {
         category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
         threshold: 'BLOCK_NONE',
-      },
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_LOW_AND_ABOVE',
       },
     ],
   },
