@@ -27,22 +27,49 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, ArrowDown, Sparkles, Lightbulb } from "lucide-react"
-import { tradeSignals } from "@/lib/data"
+import { getTradeSignals } from "@/services/zerodha"
 import { generateTradeSignalExplanation } from "@/ai/flows/generate-trade-signal-explanation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 
-type Signal = (typeof tradeSignals)[number]
+type Signal = {
+  id: number;
+  ticker: string;
+  signal: string;
+  confidence: number;
+  reasoning: string;
+}
 
 export function PredictiveAnalysisCard() {
   const { toast } = useToast()
+  const [signals, setSignals] = React.useState<Signal[]>([])
+  const [signalsLoading, setSignalsLoading] = React.useState(true)
   const [selectedSignal, setSelectedSignal] = React.useState<Signal | null>(null)
   const [explanation, setExplanation] = React.useState<string | null>(null)
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [isExplanationLoading, setIsExplanationLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    async function fetchSignals() {
+      setSignalsLoading(true)
+      try {
+        const result = await getTradeSignals()
+        setSignals(result)
+      } catch (error) {
+        console.error(error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch trade signals.",
+        })
+      }
+      setSignalsLoading(false)
+    }
+    fetchSignals()
+  }, [toast])
 
   const handleExplainClick = async (signal: Signal) => {
     setSelectedSignal(signal)
-    setIsLoading(true)
+    setIsExplanationLoading(true)
     setExplanation(null)
     
     try {
@@ -59,10 +86,9 @@ export function PredictiveAnalysisCard() {
         title: "Error",
         description: "Failed to generate explanation. Please try again.",
       })
-      // Close dialog on error
       setSelectedSignal(null)
     } finally {
-      setIsLoading(false)
+      setIsExplanationLoading(false)
     }
   }
 
@@ -79,38 +105,47 @@ export function PredictiveAnalysisCard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ticker</TableHead>
-                <TableHead>Signal</TableHead>
-                <TableHead className="text-right">Confidence</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tradeSignals.map((signal) => (
-                <TableRow key={signal.id}>
-                  <TableCell className="font-medium">{signal.ticker}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={signal.signal === "BUY" ? "default" : "destructive"}
-                      className={signal.signal === "BUY" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
-                    >
-                      {signal.signal === "BUY" ? <ArrowUp className="mr-1 size-3" /> : <ArrowDown className="mr-1 size-3" />}
-                      {signal.signal}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{signal.confidence}%</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => handleExplainClick(signal)}>
-                      Explain
-                    </Button>
-                  </TableCell>
+          {signalsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticker</TableHead>
+                  <TableHead>Signal</TableHead>
+                  <TableHead className="text-right">Confidence</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {signals.map((signal) => (
+                  <TableRow key={signal.id}>
+                    <TableCell className="font-medium">{signal.ticker}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={signal.signal === "BUY" ? "default" : "destructive"}
+                        className={signal.signal === "BUY" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+                      >
+                        {signal.signal === "BUY" ? <ArrowUp className="mr-1 size-3" /> : <ArrowDown className="mr-1 size-3" />}
+                        {signal.signal}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{signal.confidence}%</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => handleExplainClick(signal)}>
+                        Explain
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -126,7 +161,7 @@ export function PredictiveAnalysisCard() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {isLoading && (
+            {isExplanationLoading && (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-full" />

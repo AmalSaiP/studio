@@ -39,8 +39,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
+import { runBacktest } from "@/services/zerodha"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const backtestingSchema = z.object({
   model: z.string({ required_error: "Please select a model." }),
@@ -48,41 +50,47 @@ const backtestingSchema = z.object({
     from: z.date({ required_error: "Start date is required." }),
     to: z.date({ required_error: "End date is required." }),
   }),
-})
+}).refine(data => data.dateRange.from < data.dateRange.to, {
+    message: "Start date must be before end date.",
+    path: ["dateRange"],
+});
+
 
 type BacktestingValues = z.infer<typeof backtestingSchema>
 
 export function BacktestingCard() {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false)
-  const [progress, setProgress] = React.useState(0)
   const [results, setResults] = React.useState<{ pnl: number; winRate: number } | null>(null)
 
   const form = useForm<BacktestingValues>({
     resolver: zodResolver(backtestingSchema),
+    defaultValues: {
+      dateRange: {
+        from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+        to: new Date(),
+      }
+    }
   })
 
-  const onSubmit = (data: BacktestingValues) => {
+  const onSubmit = async (data: BacktestingValues) => {
     console.log("Starting backtest with:", data)
     setIsLoading(true)
     setResults(null)
-    setProgress(0)
     
-    // Simulate backtesting progress
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsLoading(false)
-          // Mock results
-          setResults({
-            pnl: Math.floor(Math.random() * 20000) - 5000,
-            winRate: Math.random() * (0.8 - 0.4) + 0.4,
-          })
-          return 100
-        }
-        return prev + 10
-      })
-    }, 200)
+    try {
+        const backtestResults = await runBacktest(data.model, data.dateRange);
+        setResults(backtestResults);
+    } catch(error) {
+        console.error(error);
+        toast({
+            variant: "destructive",
+            title: "Backtest Failed",
+            description: "Could not run the backtest. Please try again later.",
+        })
+    } finally {
+        setIsLoading(false)
+    }
   }
 
   return (
@@ -166,6 +174,7 @@ export function BacktestingCard() {
                         selected={{ from: field.value?.from, to: field.value?.to }}
                         onSelect={(range) => field.onChange(range || { from: undefined, to: undefined })}
                         numberOfMonths={2}
+                        disabled={(date) => date > new Date() || date < new Date("2020-01-01")}
                       />
                     </PopoverContent>
                   </Popover>
@@ -184,7 +193,7 @@ export function BacktestingCard() {
         {isLoading && (
           <div className="w-full space-y-2">
             <p className="text-sm text-muted-foreground">Processing historical data...</p>
-            <Progress value={progress} />
+            <Skeleton className="h-4 w-full" />
           </div>
         )}
         {results && (

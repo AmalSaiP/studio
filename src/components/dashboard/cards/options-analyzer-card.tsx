@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { suggestIndicators, type SuggestIndicatorsOutput } from "@/ai/flows/suggest-indicators"
+import { summarizeOptionsAnalysis, type SummarizeOptionsAnalysisOutput } from "@/ai/flows/summarize-options-analysis"
+import { getOptionsChainAnalysis } from "@/services/zerodha"
 import { BrainCircuit, Lightbulb, Sparkles } from "lucide-react"
 import {
   Card,
@@ -25,7 +27,6 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -178,23 +179,68 @@ function IndicatorSuggester() {
 }
 
 function AnalysisSummary() {
+  const { toast } = useToast()
+  const [loading, setLoading] = React.useState(true);
+  const [summary, setSummary] = React.useState<SummarizeOptionsAnalysisOutput | null>(null)
+
+  React.useEffect(() => {
+    async function fetchAnalysis() {
+        setLoading(true);
+        try {
+            const analysisData = await getOptionsChainAnalysis("NIFTY 50");
+            const result = await summarizeOptionsAnalysis({ analysisData });
+            setSummary(result);
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to get analysis summary. Please try again.",
+            });
+        }
+        setLoading(false);
+    }
+    fetchAnalysis();
+  }, [toast])
+
+  if (loading) {
+    return (
+       <div className="space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+           <div className="space-y-2">
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-1/5" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+        </div>
+    )
+  }
+
+  if (!summary) {
+    return <p className="text-sm text-muted-foreground">No analysis available.</p>
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        AI-powered summary of option chain data, highlighting key opportunities and risks.
-      </p>
       <div className="space-y-3">
         <div>
           <h4 className="font-semibold font-headline">Summary</h4>
-          <p className="text-sm text-muted-foreground">Overall market sentiment appears cautiously bullish based on Put-Call Ratio (PCR) of 1.2. Significant open interest is concentrated at the 22500 CE and 22000 PE strikes, suggesting a potential trading range.</p>
+          <p className="text-sm text-muted-foreground">{summary.summary}</p>
         </div>
         <div>
           <h4 className="font-semibold font-headline">Opportunities</h4>
-          <p className="text-sm text-muted-foreground">A Bull Call Spread could be considered, buying the 22200 CE and selling the 22500 CE to capitalize on the expected range-bound upward movement while limiting risk.</p>
+          <p className="text-sm text-muted-foreground">{summary.opportunities}</p>
         </div>
         <div>
           <h4 className="font-semibold font-headline">Risks</h4>
-          <p className="text-sm text-muted-foreground">Implied Volatility (IV) is relatively low, which could mean options are cheap, but a sudden spike in volatility could negatively impact short positions. Watch for any major news event.</p>
+          <p className="text-sm text-muted-foreground">{summary.risks}</p>
         </div>
       </div>
     </div>
