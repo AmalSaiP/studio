@@ -17,118 +17,7 @@ import {
 import { CandlestickChart } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-
-// --- MOCK DATA GENERATION ---
-
-// Generates a series for a trading day starting at 9:15 AM.
-function generateIntradaySeries(baseValue: number, numPoints: number, intervalMinutes: number) {
-    const data = [];
-    const marketOpen = new Date();
-    marketOpen.setHours(9, 15, 0, 0);
-
-    let currentDate = new Date(marketOpen);
-    let currentValue = baseValue;
-
-    for (let i = 0; i < numPoints; i++) {
-        data.push({
-            date: currentDate.toISOString(),
-            value: parseFloat(currentValue.toFixed(2)),
-        });
-        currentValue += (Math.random() - 0.5) * 20; // Simulate price fluctuation
-        currentDate = new Date(currentDate.getTime() + intervalMinutes * 60000);
-    }
-    return data;
-}
-
-
-function generateDailySeries(endDate: Date, numDays: number) {
-    const data = [];
-    let currentDate = new Date(endDate);
-    let currentValue = 22500 + (Math.random() - 0.5) * 500;
-
-    for (let i = 0; i < numDays; i++) {
-        data.unshift({
-            date: new Date(currentDate.setDate(currentDate.getDate() - 1)).toISOString(),
-            value: parseFloat(currentValue.toFixed(2)),
-        });
-        currentValue += (Math.random() - 0.5) * 150;
-    }
-    return data;
-}
-
-function generateWeeklySeries(endDate: Date, numWeeks: number) {
-    const data = [];
-    let currentDate = new Date(endDate);
-     let currentValue = 22000 + (Math.random() - 0.5) * 1000;
-
-    for (let i = 0; i < numWeeks; i++) {
-        data.unshift({
-            date: new Date(currentDate.setDate(currentDate.getDate() - 7)).toISOString(),
-            value: parseFloat(currentValue.toFixed(2)),
-        });
-        currentValue += (Math.random() - 0.5) * 300;
-    }
-    return data;
-}
-
-async function getPerformanceData(instrument: string, timeRange: string) {
-    console.log(`Fetching performance data for ${instrument} (${timeRange})`);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const now = new Date();
-    switch (timeRange) {
-        case '7d':
-            return generateDailySeries(now, 7);
-        case '1m':
-            return generateDailySeries(now, 30);
-        case '3m':
-            return generateWeeklySeries(now, 12);
-        case '1d':
-        default:
-            const marketOpen = new Date();
-            marketOpen.setHours(9, 15, 0, 0);
-            const marketClose = new Date();
-            marketClose.setHours(15, 30, 0, 0);
-
-            // If market is closed for the day, show the full day's data
-            if (now > marketClose) {
-                return generateIntradaySeries(22500, 26, 15); // 26 points for a full 9:15-15:30 day at 15min intervals
-            }
-            // If market is not yet open, show a single point at open time
-            if (now < marketOpen) {
-                return [{ date: marketOpen.toISOString(), value: 22500 }];
-            }
-            // If market is open, generate data up to the current time
-            const minutesSinceOpen = (now.getTime() - marketOpen.getTime()) / 60000;
-            const pointsToGenerate = Math.floor(minutesSinceOpen / 15) + 1;
-            return generateIntradaySeries(22500, pointsToGenerate, 15);
-    }
-}
-
-async function getLatestTick(instrument: string, currentValue: number) {
-    console.log(`Fetching latest tick for ${instrument}`);
-    
-    const now = new Date();
-    const marketOpenTime = new Date().setHours(9, 15, 0, 0);
-    const marketCloseTime = new Date().setHours(15, 30, 0, 0);
-    
-    // If market is closed, don't generate a new value
-    if (now.getTime() < marketOpenTime || now.getTime() > marketCloseTime) {
-         return {
-            date: new Date().toISOString(),
-            value: currentValue
-        };
-    }
-
-    // No latency for ticks to feel "live"
-    const change = (Math.random() - 0.5) * 5;
-    const newValue = currentValue + change;
-    return {
-        date: new Date().toISOString(),
-        value: parseFloat(newValue.toFixed(2)),
-    }
-}
-
+import { useToast } from "@/hooks/use-toast"
 
 const chartConfig = {
   value: {
@@ -143,7 +32,7 @@ type PerformanceData = {
 }
 
 const axisFormatters: Record<string, (value: any) => string> = {
-    '1d': (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+    '1d': (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
     '7d': (value) => new Date(value).toLocaleDateString([], { weekday: 'short' }),
     '1m': (value) => new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' }),
     '3m': (value) => new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' }),
@@ -157,6 +46,7 @@ const tooltipLabelFormatters: Record<string, (label: any) => string> = {
 };
 
 export function PerformanceChartCard() {
+  const { toast } = useToast()
   const [data, setData] = React.useState<PerformanceData[]>([])
   const [loading, setLoading] = React.useState(true)
   const [timeRange, setTimeRange] = React.useState("1d")
@@ -164,38 +54,67 @@ export function PerformanceChartCard() {
   React.useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      const result = await getPerformanceData("NIFTY 50", timeRange)
-      setData(result)
-      setLoading(false)
+      try {
+        const response = await fetch(`/api/performance?timeRange=${timeRange}`)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json()
+        setData(result)
+      } catch (error) {
+        console.error("Failed to fetch performance data:", error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch performance data from the backend.",
+        })
+      } finally {
+        setLoading(false)
+      }
     }
     fetchData()
-  }, [timeRange])
+  }, [timeRange, toast])
 
   // Live updates for 1d view
   React.useEffect(() => {
-    if (timeRange !== '1d' || loading || data.length === 0) {
+    if (timeRange !== '1d' || loading) {
       return
     }
 
     const intervalId = setInterval(async () => {
-      const latestValue = data[data.length - 1].value;
-      const newTick = await getLatestTick("NIFTY 50", latestValue);
-      
-      // Only update state if the market is open and the value changed
-      if (newTick.value !== latestValue) {
-         setData((prevData) => {
-            const newData = [...prevData, newTick];
-            // Don't let the array grow indefinitely, keep last ~100 points
-            return newData.length > 100 ? newData.slice(1) : newData;
-         });
-      }
-    }, 5000) // 5 seconds
+        // Only fetch new ticks during market hours
+        const now = new Date();
+        const marketOpenTime = new Date().setHours(9, 15, 0, 0);
+        const marketCloseTime = new Date().setHours(15, 30, 0, 0);
+
+        if (now.getTime() < marketOpenTime || now.getTime() > marketCloseTime) {
+            return;
+        }
+
+        try {
+            // Instrument for NIFTY 50 Index quote
+            const response = await fetch('/api/quote?instrument=NSE:NIFTY 50');
+            if (!response.ok) return;
+
+            const newTick = await response.json();
+            
+            setData((prevData) => {
+                if (prevData.length > 0 && prevData[prevData.length - 1].value === newTick.value) {
+                    return prevData;
+                }
+                const newData = [...prevData, newTick];
+                return newData.length > 150 ? newData.slice(1) : newData; // Keep array size reasonable
+            });
+        } catch (error) {
+            console.warn("Failed to fetch live tick:", error);
+        }
+    }, 5000) // Poll every 5 seconds
 
     return () => clearInterval(intervalId)
-  }, [timeRange, loading, data])
+  }, [timeRange, loading])
 
-  const latestData = data[data.length - 1];
-  const previousData = data[data.length - 2] ?? data[data.length - 1];
+  const latestData = data.length > 0 ? data[data.length - 1] : null;
+  const previousData = data.length > 1 ? data[data.length - 2] : latestData;
   const change = latestData && previousData ? latestData.value - previousData.value : 0;
   const percentageChange = latestData && previousData && previousData.value !== 0 ? (change / previousData.value) * 100 : 0;
   const isPositive = change >= 0;
@@ -227,7 +146,7 @@ export function PerformanceChartCard() {
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-[256px] w-full" />
            </div>
-        ) : (
+        ) : data.length > 0 ? (
           <>
             <div className="flex items-baseline gap-2">
                 <h2 className="text-3xl font-bold">{latestData?.value.toFixed(2)}</h2>
@@ -284,6 +203,10 @@ export function PerformanceChartCard() {
               </AreaChart>
             </ChartContainer>
           </>
+        ) : (
+             <div className="flex h-[320px] items-center justify-center">
+                <p className="text-muted-foreground">No data available. Please configure API keys.</p>
+             </div>
         )}
       </CardContent>
     </Card>

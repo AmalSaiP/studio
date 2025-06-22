@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { RSI, MACD, EMA } from 'technicalindicators';
+import { getHistoricalData } from '@/services/zerodha';
 
 type Candle = {
     open: number;
@@ -20,26 +21,12 @@ type Signal = {
   reasoning: string;
 }
 
-// Generates a series of mock price candles for analysis.
-function generateMockCandles(count: number): Candle[] {
-    const candles: Candle[] = [];
-    let close = 22500;
-    let timestamp = new Date().getTime();
-
-    for (let i = 0; i < count; i++) {
-        const open = close + (Math.random() - 0.5) * 20;
-        const high = Math.max(open, close) + Math.random() * 15;
-        const low = Math.min(open, close) - Math.random() * 15;
-        close = low + Math.random() * (high - low);
-        
-        candles.unshift({ open, high, low, close, timestamp });
-        timestamp -= 15 * 60 * 1000; // 15 min intervals
-    }
-    return candles;
-}
-
 // Applies rule-based logic to generate BUY/SELL signals.
 function generateTradeSignals(candles: Candle[]): Signal[] {
+    if (candles.length < 30) { // Not enough data for indicators
+        return [];
+    }
+
     const closes = candles.map(c => c.close);
 
     const rsiValues = RSI.calculate({ values: closes, period: 14 });
@@ -106,6 +93,7 @@ function generateTradeSignals(candles: Candle[]): Signal[] {
         }
     }
     
+    // Fallback to default signals if no new ones are generated
     if (signals.length === 0) {
         return [
             { id: 1, ticker: 'BANKNIFTY_FUT', signal: 'BUY', confidence: 85, entryPrice: 48500.00, targetPrice: 48800.00, stopLoss: 48350.00, reasoning: 'Default signal: Strong market opening and positive global cues.' },
@@ -119,7 +107,25 @@ function generateTradeSignals(candles: Candle[]): Signal[] {
 
 export async function GET() {
     try {
-        const historicalData = generateMockCandles(100);
+        const toDate = new Date();
+        const fromDate = new Date();
+        // Fetch enough data for the indicators to warm up
+        fromDate.setDate(toDate.getDate() - 30); 
+
+        // Zerodha instrument token for NIFTY 50 Index. Replace with future's token if needed.
+        const instrumentToken = "256265"; 
+        
+        const historicalData = await getHistoricalData(instrumentToken, "15minute", fromDate, toDate);
+
+        if (historicalData.length === 0) {
+             console.warn("No historical data received from Zerodha. Falling back to default signals.");
+             // Return default signals if API fails or returns no data
+             return NextResponse.json([
+                { id: 1, ticker: 'BANKNIFTY_FUT', signal: 'BUY', confidence: 85, entryPrice: 48500.00, targetPrice: 48800.00, stopLoss: 48350.00, reasoning: 'Default signal: Strong market opening and positive global cues.' },
+                { id: 2, ticker: 'RELIANCE_FUT', signal: 'SELL', confidence: 78, entryPrice: 2900.00, targetPrice: 2860.00, stopLoss: 2920.00, reasoning: 'Default signal: Approaching a key resistance level with high volume.' },
+            ]);
+        }
+
         const tradeSignals = generateTradeSignals(historicalData);
         return NextResponse.json(tradeSignals);
     } catch (error) {
