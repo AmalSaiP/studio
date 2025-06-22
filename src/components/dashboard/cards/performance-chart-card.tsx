@@ -45,75 +45,43 @@ const tooltipLabelFormatters: Record<string, (label: any) => string> = {
     '3m': (label) => new Date(label).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' }),
 };
 
-const generateMockData = (timeRange: string): PerformanceData[] => {
-    const toDate = new Date();
-    const data: PerformanceData[] = [];
-    let fromDate: Date;
-    let points: number;
-    let intervalMinutes: number;
-
-    switch (timeRange) {
-        case '7d':
-            fromDate = new Date();
-            fromDate.setDate(toDate.getDate() - 7);
-            points = 7;
-            intervalMinutes = 24 * 60;
-            break;
-        case '1m':
-            fromDate = new Date();
-            fromDate.setMonth(toDate.getMonth() - 1);
-            points = 30;
-            intervalMinutes = 24 * 60;
-            break;
-        case '3m':
-            fromDate = new Date();
-            fromDate.setMonth(toDate.getMonth() - 3);
-            points = 90;
-            intervalMinutes = 24 * 60;
-            break;
-        case '1d':
-        default:
-            fromDate = new Date();
-            fromDate.setHours(9, 15, 0, 0);
-            points = 25; // ~ every 15 mins for a trading day
-            intervalMinutes = 15;
-            break;
-    }
-
-    let lastValue = 22500;
-    for (let i = 0; i < points; i++) {
-        const newDate = new Date(fromDate.getTime() + i * intervalMinutes * 60000);
-        // Ensure mock data is only for today if 1d
-        if (timeRange === '1d' && newDate > new Date()) {
-            break;
-        }
-
-        const change = (Math.random() - 0.49) * 50;
-        lastValue += change;
-        data.push({
-            date: newDate.toISOString(),
-            value: parseFloat(lastValue.toFixed(2)),
-        });
-    }
-    return data;
-}
-
 
 export function PerformanceChartCard() {
   const { toast } = useToast()
   const [data, setData] = React.useState<PerformanceData[]>([])
   const [loading, setLoading] = React.useState(true)
   const [timeRange, setTimeRange] = React.useState("1d")
+  const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
+
 
   React.useEffect(() => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      const mockData = generateMockData(timeRange);
-      setData(mockData);
-      setLoading(false);
-    }, 500);
-  }, [timeRange]);
+    const fetchData = async () => {
+        setLoading(true);
+        setLastUpdated(null);
+        try {
+            const response = await fetch(`/api/performance?timeRange=${timeRange}`);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const chartData = await response.json();
+            setData(chartData);
+             if (chartData.length > 0) {
+                setLastUpdated(new Date(chartData[chartData.length - 1].date));
+            }
+        } catch (error) {
+            console.error("Failed to fetch performance data:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not fetch performance data. Zerodha token may be expired.",
+            });
+            setData([]); // Clear data on error
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchData();
+  }, [timeRange, toast]);
 
   // Live updates for 1d view
   React.useEffect(() => {
@@ -121,31 +89,31 @@ export function PerformanceChartCard() {
       return
     }
 
-    const intervalId = setInterval(() => {
-        const now = new Date();
-        const marketOpenTime = new Date(now).setHours(9, 15, 0, 0);
-        const marketCloseTime = new Date(now).setHours(15, 30, 0, 0);
+    const intervalId = setInterval(async () => {
+        try {
+            const response = await fetch('/api/quote?instrument=NSE:NIFTY%2050');
+            if (!response.ok) {
+                console.warn('Failed to fetch live quote');
+                return;
+            }
+            const newTick = await response.json();
 
-        if (now.getTime() < marketOpenTime || now.getTime() > marketCloseTime) {
-            return;
+            setLastUpdated(new Date(newTick.date));
+
+            setData((prevData) => {
+                if (prevData.length === 0) return [newTick];
+                const newData = [...prevData, newTick];
+                // Keep array size reasonable to prevent performance degradation
+                return newData.length > 150 ? newData.slice(1) : newData; 
+            });
+
+        } catch (error) {
+            console.warn("Error polling for quote:", error);
         }
-
-        setData((prevData) => {
-            if (prevData.length === 0) return [];
-            const lastValue = prevData[prevData.length-1].value;
-            const change = (Math.random() - 0.49) * 10;
-            const newTick: PerformanceData = {
-                date: new Date().toISOString(),
-                value: parseFloat((lastValue + change).toFixed(2)),
-            };
-
-            const newData = [...prevData, newTick];
-            return newData.length > 150 ? newData.slice(1) : newData; // Keep array size reasonable
-        });
     }, 5000) // Poll every 5 seconds
 
     return () => clearInterval(intervalId)
-  }, [timeRange, loading])
+  }, [timeRange, loading, toast])
 
   const latestData = data.length > 0 ? data[data.length - 1] : null;
   const previousData = data.length > 1 ? data[data.length - 2] : latestData;
@@ -182,13 +150,29 @@ export function PerformanceChartCard() {
            </div>
         ) : data.length > 0 ? (
           <>
-            <div className="flex items-baseline gap-2">
-                <h2 className="text-3xl font-bold">{latestData?.value.toFixed(2)}</h2>
-                <p className={`text-sm font-medium ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {isPositive ? '+' : ''}{change.toFixed(2)} ({percentageChange.toFixed(2)}%)
-                </p>
+             <div className="space-y-1">
+                <div className="flex items-baseline gap-2">
+                    <h2 className="text-3xl font-bold">{latestData?.value.toFixed(2)}</h2>
+                    <p className={`text-sm font-medium ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {isPositive ? '+' : ''}{change.toFixed(2)} ({percentageChange.toFixed(2)}%)
+                    </p>
+                </div>
+                 <div className="flex items-center text-xs text-muted-foreground gap-2">
+                    {timeRange === '1d' && (
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    )}
+                    <span>
+                    {timeRange === '1d' ? 
+                        `Live • Last update ${lastUpdated ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '...'}` :
+                        `Closing data as of ${lastUpdated ? lastUpdated.toLocaleDateString() : '...'}`
+                    }
+                    </span>
+                </div>
             </div>
-            <ChartContainer config={chartConfig} className="h-64 w-full">
+            <ChartContainer config={chartConfig} className="h-64 w-full mt-4">
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
