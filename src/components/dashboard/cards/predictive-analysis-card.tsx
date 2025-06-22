@@ -28,7 +28,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, ArrowDown, Sparkles, Lightbulb } from "lucide-react"
 import { getTradeSignals } from "@/services/zerodha"
-import { generateTradeSignalExplanation } from "@/ai/flows/generate-trade-signal-explanation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -47,7 +46,6 @@ export function PredictiveAnalysisCard() {
   const [signalsLoading, setSignalsLoading] = React.useState(true)
   const [selectedSignal, setSelectedSignal] = React.useState<Signal | null>(null)
   const [explanation, setExplanation] = React.useState<string | null>(null)
-  const [isExplanationLoading, setIsExplanationLoading] = React.useState(false)
 
   React.useEffect(() => {
     async function fetchSignals() {
@@ -68,29 +66,9 @@ export function PredictiveAnalysisCard() {
     fetchSignals()
   }, [toast])
 
-  const handleExplainClick = async (signal: Signal) => {
+  const handleExplainClick = (signal: Signal) => {
     setSelectedSignal(signal)
-    setIsExplanationLoading(true)
-    setExplanation(null)
-    
-    try {
-      const result = await generateTradeSignalExplanation({
-        ticker: signal.ticker,
-        signalType: signal.signal.toLowerCase() as "buy" | "sell",
-        reasoning: signal.reasoning,
-      })
-      setExplanation(result.explanation)
-    } catch (error) {
-      console.error(error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to generate explanation. Please try again.",
-      })
-      setSelectedSignal(null)
-    } finally {
-      setIsExplanationLoading(false)
-    }
+    setExplanation(signal.reasoning)
   }
 
   return (
@@ -102,7 +80,7 @@ export function PredictiveAnalysisCard() {
             <span>Predictive Analysis</span>
           </CardTitle>
           <CardDescription>
-            AI-generated signals based on advanced ML models.
+            ML-generated signals based on historical data.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -138,7 +116,7 @@ export function PredictiveAnalysisCard() {
                     <TableCell className="text-right">{signal.confidence}%</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => handleExplainClick(signal)}>
-                        Explain
+                        Details
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -154,21 +132,16 @@ export function PredictiveAnalysisCard() {
           <DialogHeader>
             <DialogTitle className="font-headline flex items-center gap-2">
                 <Lightbulb className="text-primary"/>
-                AI Signal Explanation for {selectedSignal?.ticker}
+                Signal Details for {selectedSignal?.ticker}
             </DialogTitle>
             <DialogDescription>
                 Signal: <span className={cn("font-semibold", selectedSignal?.signal === 'BUY' ? "text-emerald-500" : "text-destructive")}>{selectedSignal?.signal}</span>
+                {' | '}
+                Confidence: {selectedSignal?.confidence}%
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {isExplanationLoading && (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </div>
-            )}
+            <h4 className="font-semibold mb-2">Model Reasoning:</h4>
             {explanation && <p className="text-sm text-muted-foreground">{explanation}</p>}
           </div>
         </DialogContent>
