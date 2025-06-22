@@ -3,7 +3,6 @@
 
 import * as React from "react"
 import { useToast } from "@/hooks/use-toast"
-import { getOptionsChainAnalysis } from "@/services/zerodha"
 import { BrainCircuit } from "lucide-react"
 import {
   Card,
@@ -14,6 +13,8 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
+const mockAnalysis = "Overall market sentiment appears cautiously bullish based on Put-Call Ratio (PCR) of 1.2. Significant open interest is concentrated at the 22500 CE and 22000 PE strikes, suggesting a potential trading range. Implied Volatility (IV) is relatively low, which could mean options are cheap, but a sudden spike in volatility could negatively impact short positions. A Bull Call Spread could be considered, buying the 22200 CE and selling the 22500 CE to capitalize on the expected range-bound upward movement while limiting risk.";
+
 function AnalysisSummary() {
   const { toast } = useToast()
   const [loading, setLoading] = React.useState(true);
@@ -23,8 +24,8 @@ function AnalysisSummary() {
     async function fetchAnalysis() {
         setLoading(true);
         try {
-            const result = await getOptionsChainAnalysis("NIFTY 50");
-            setAnalysisText(result);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            setAnalysisText(mockAnalysis);
         } catch (error) {
             console.error(error);
             toast({

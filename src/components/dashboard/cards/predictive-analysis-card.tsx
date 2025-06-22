@@ -27,7 +27,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, ArrowDown, Sparkles, Lightbulb, TrendingUp, TrendingDown, Target } from "lucide-react"
-import { getTradeSignals } from "@/services/zerodha"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -45,6 +44,59 @@ type Signal = {
   reasoning: string;
 }
 
+const mockSignals = [
+    {
+        id: 1,
+        ticker: 'NIFTY24AUGFUT',
+        signal: 'BUY' as const,
+        confidence: 88,
+        entryPrice: 22510.50,
+        targetPrice: 22650.00,
+        stopLoss: 22440.00,
+        reasoning: 'Strong bullish momentum indicated by MACD crossover and RSI above 60. Price is holding above the 50-period moving average.',
+    },
+    {
+        id: 2,
+        ticker: 'BANKNIFTY 24AUG48000CE',
+        signal: 'BUY' as const,
+        confidence: 92,
+        entryPrice: 350.00,
+        targetPrice: 450.00,
+        stopLoss: 300.00,
+        reasoning: 'High open interest buildup and positive delta suggest strong upward potential. Implied volatility is increasing, favoring option buyers.',
+    },
+    {
+        id: 3,
+        ticker: 'RELIANCE',
+        signal: 'SELL' as const,
+        confidence: 75,
+        entryPrice: 2890.00,
+        targetPrice: 2820.00,
+        stopLoss: 2925.00,
+        reasoning: 'Stock is overbought with RSI above 75. A bearish divergence pattern is forming after hitting a key resistance level.',
+    },
+    {
+        id: 4,
+        ticker: 'TCS',
+        signal: 'BUY' as const,
+        confidence: 81,
+        entryPrice: 3855.00,
+        targetPrice: 3950.00,
+        stopLoss: 3810.00,
+        reasoning: 'Breakout above 50-day moving average with high volume. Trend indicators confirm bullish continuation.',
+    },
+    {
+        id: 5,
+        ticker: 'HDFCBANK',
+        signal: 'SELL' as const,
+        confidence: 78,
+        entryPrice: 1680.00,
+        targetPrice: 1640.00,
+        stopLoss: 1695.00,
+        reasoning: 'Price broke below a key support level and the 200-day moving average, a strong bearish signal.',
+    }
+];
+
 export function PredictiveAnalysisCard() {
   const { toast } = useToast()
   const { searchQuery } = useSearch()
@@ -56,8 +108,8 @@ export function PredictiveAnalysisCard() {
     async function fetchSignals() {
       setSignalsLoading(true)
       try {
-        const result = await getTradeSignals()
-        setSignals(result)
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setSignals(mockSignals)
       } catch (error) {
         console.error(error)
         toast({

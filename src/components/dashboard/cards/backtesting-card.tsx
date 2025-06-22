@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import { runBacktest } from "@/services/zerodha"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const backtestingSchema = z.object({
@@ -57,6 +56,15 @@ const backtestingSchema = z.object({
 
 
 type BacktestingValues = z.infer<typeof backtestingSchema>
+
+async function runBacktest(model: string, dateRange: { from: Date; to: Date }) {
+    console.log(`Running backtest for model ${model} from ${dateRange.from} to ${dateRange.to}`);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const pnl = Math.floor(Math.random() * 20000) - 5000;
+    const winRate = Math.random() * (0.8 - 0.4) + 0.4;
+    return { pnl, winRate };
+}
+
 
 export function BacktestingCard() {
   const { toast } = useToast();

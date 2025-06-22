@@ -15,9 +15,87 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { CandlestickChart } from "lucide-react"
-import { getPerformanceData, getLatestTick } from "@/services/zerodha"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+
+// --- MOCK DATA GENERATION ---
+
+function generateIntradaySeries(startDate: Date, numPoints: number, intervalMinutes: number) {
+    const data = [];
+    let currentDate = new Date(startDate);
+    let currentValue = 22500 + (Math.random() - 0.5) * 50;
+
+    for (let i = 0; i < numPoints; i++) {
+        data.push({
+            date: currentDate.toISOString(),
+            value: parseFloat(currentValue.toFixed(2)),
+        });
+        currentValue += (Math.random() - 0.5) * 20;
+        currentDate = new Date(currentDate.getTime() + intervalMinutes * 60000);
+    }
+    return data;
+}
+
+function generateDailySeries(endDate: Date, numDays: number) {
+    const data = [];
+    let currentDate = new Date(endDate);
+    let currentValue = 22500 + (Math.random() - 0.5) * 500;
+
+    for (let i = 0; i < numDays; i++) {
+        data.unshift({
+            date: new Date(currentDate.setDate(currentDate.getDate() - 1)).toISOString(),
+            value: parseFloat(currentValue.toFixed(2)),
+        });
+        currentValue += (Math.random() - 0.5) * 150;
+    }
+    return data;
+}
+
+function generateWeeklySeries(endDate: Date, numWeeks: number) {
+    const data = [];
+    let currentDate = new Date(endDate);
+     let currentValue = 22000 + (Math.random() - 0.5) * 1000;
+
+    for (let i = 0; i < numWeeks; i++) {
+        data.unshift({
+            date: new Date(currentDate.setDate(currentDate.getDate() - 7)).toISOString(),
+            value: parseFloat(currentValue.toFixed(2)),
+        });
+        currentValue += (Math.random() - 0.5) * 300;
+    }
+    return data;
+}
+
+async function getPerformanceData(instrument: string, timeRange: string) {
+    console.log(`Fetching performance data for ${instrument} (${timeRange})`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const now = new Date();
+    switch (timeRange) {
+        case '7d':
+            return generateDailySeries(now, 7);
+        case '1m':
+            return generateDailySeries(now, 30);
+        case '3m':
+            return generateWeeklySeries(now, 12);
+        case '1d':
+        default:
+            const marketOpen = new Date(now.setHours(9, 15, 0, 0));
+            return generateIntradaySeries(marketOpen, 50, 15); // 50 points, 15 min interval
+    }
+}
+
+async function getLatestTick(instrument: string, currentValue: number) {
+    console.log(`Fetching latest tick for ${instrument}`);
+    // No latency for ticks to feel "live"
+    const change = (Math.random() - 0.5) * 5;
+    const newValue = currentValue + change;
+    return {
+        date: new Date().toISOString(),
+        value: parseFloat(newValue.toFixed(2)),
+    }
+}
+
 
 const chartConfig = {
   value: {
