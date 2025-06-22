@@ -1,6 +1,8 @@
 
 'use server';
 
+import { generateTradeSignal, type MarketData } from "@/ai/flows/trade-signal-flow";
+
 // This is a mock service to simulate Zerodha Kite Connect API.
 // In a real application, you would use the Kite Connect client here.
 
@@ -11,48 +13,14 @@ if (!process.env.ZERODHA_API_KEY || !process.env.ZERODHA_API_SECRET) {
   console.warn("Zerodha API key/secret not found in .env. Using mock service without auth check.");
 }
 
-const tradeSignals = [
-    {
-      id: 1,
-      ticker: 'NIFTY 24AUGFUT',
-      signal: 'BUY',
-      confidence: 88,
-      entryPrice: 22550.00,
-      targetPrice: 22750.00,
-      stopLoss: 22450.00,
-      reasoning: 'Bullish Engulfing pattern formed on the 1-hour chart, confirmed by RSI crossing above 50. Entry is triggered on a break of the pattern\'s high. Target is set at the next major resistance level. Stop-loss is placed just below the pattern\'s low.',
-    },
-    {
-      id: 2,
-      ticker: 'BANKNIFTY 24AUG48000CE',
-      signal: 'BUY',
-      confidence: 92,
-      entryPrice: 350.50,
-      targetPrice: 550.00,
-      stopLoss: 250.00,
-      reasoning: 'Significant open interest buildup and positive delta at this strike price suggest strong upward potential. Random Forest model identifies a pattern of pre-expiry gamma squeeze, making this a high-probability trade.',
-    },
-    {
-      id: 3,
-      ticker: 'RELIANCE',
-      signal: 'SELL',
-      confidence: 78,
-      entryPrice: 2880.00,
-      targetPrice: 2800.00,
-      stopLoss: 2920.00,
-      reasoning: 'Stock is overbought with RSI above 75 on the daily chart. XGBoost model flags a potential reversal pattern (Evening Star) after hitting a key Fibonacci resistance level. The sell signal indicates a short-term correction is likely.',
-    },
-    {
-      id: 4,
-      ticker: 'TCS',
-      signal: 'BUY',
-      confidence: 81,
-      entryPrice: 3850.00,
-      targetPrice: 4000.00,
-      stopLoss: 3790.00,
-      reasoning: 'Breakout above the 50-day moving average on high volume, indicating strong institutional interest. LSTM model confirms a bullish trend continuation with a projected upside target of ₹4000.',
-    },
-];
+const tickers = [
+    'NIFTY 24AUGFUT',
+    'BANKNIFTY 24AUG48000CE',
+    'RELIANCE',
+    'TCS',
+    'HDFCBANK',
+    'INFOSYS'
+]
 
 // --- MOCK DATA GENERATION ---
 
@@ -120,7 +88,7 @@ export async function getPerformanceData(instrument: string, timeRange: string) 
         case '1d':
         default:
             const marketOpen = new Date(now.setHours(9, 15, 0, 0));
-            return generateIntradaySeries(marketOpen, 25, 15); // 25 points, 15 min interval
+            return generateIntradaySeries(marketOpen, 50, 15); // 50 points, 15 min interval
     }
 }
 
@@ -135,10 +103,51 @@ export async function getLatestTick(instrument: string, currentValue: number) {
     }
 }
 
+let cachedSignals: any[] | null = null;
+let cacheTime: number | null = null;
+
 export async function getTradeSignals() {
     console.log('Fetching trade signals');
+    
+    // Cache signals for 1 minute to avoid excessive API calls
+    if (cachedSignals && cacheTime && (Date.now() - cacheTime < 60000)) {
+        console.log("Returning cached signals");
+        return cachedSignals;
+    }
+
     await new Promise(resolve => setTimeout(resolve, MOCK_API_LATENCY / 2));
-    return tradeSignals;
+    
+    // Simulate generating mock market data for each ticker
+    const signalPromises = tickers.map(async (ticker, index) => {
+        const mockMarketData: MarketData = {
+            ticker,
+            currentPrice: 100 + Math.random() * 2000,
+            volume: 100000 + Math.random() * 1000000,
+            rsi: 20 + Math.random() * 60, // Relative Strength Index
+            macd: (Math.random() - 0.5) * 5, // Moving Average Convergence Divergence
+            movingAverage50: 95 + Math.random() * 2000,
+            movingAverage200: 90 + Math.random() * 1900,
+        };
+        
+        try {
+            const signal = await generateTradeSignal(mockMarketData);
+            return {
+                id: index + 1,
+                ...signal,
+            };
+        } catch (error) {
+            console.error(`Failed to generate signal for ${ticker}:`, error);
+            return null;
+        }
+    });
+
+    const resolvedSignals = await Promise.all(signalPromises);
+    const validSignals = resolvedSignals.filter(signal => signal !== null);
+
+    cachedSignals = validSignals;
+    cacheTime = Date.now();
+
+    return validSignals;
 }
 
 export async function runBacktest(model: string, dateRange: { from: Date; to: Date }) {

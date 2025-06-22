@@ -71,7 +71,7 @@ export function OptionsAnalyzerCard() {
           <span>Options Analyzer</span>
         </CardTitle>
         <CardDescription>
-          Insights from option chain data.
+          AI-driven insights from option chain data.
         </CardDescription>
       </CardHeader>
       <CardContent>
