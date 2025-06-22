@@ -1,8 +1,6 @@
 
 'use server';
 
-import { generateTradeSignal, type MarketData } from "@/ai/flows/trade-signal-flow";
-
 // This is a mock service to simulate Zerodha Kite Connect API.
 // In a real application, you would use the Kite Connect client here.
 
@@ -12,15 +10,6 @@ const MOCK_API_LATENCY = 500; // 0.5 second
 if (!process.env.ZERODHA_API_KEY || !process.env.ZERODHA_API_SECRET) {
   console.warn("Zerodha API key/secret not found in .env. Using mock service without auth check.");
 }
-
-const tickers = [
-    'NIFTY 24AUGFUT',
-    'BANKNIFTY 24AUG48000CE',
-    'RELIANCE',
-    'TCS',
-    'HDFCBANK',
-    'INFOSYS'
-]
 
 // --- MOCK DATA GENERATION ---
 
@@ -103,52 +92,66 @@ export async function getLatestTick(instrument: string, currentValue: number) {
     }
 }
 
-let cachedSignals: any[] | null = null;
-let cacheTime: number | null = null;
-
 export async function getTradeSignals() {
-    console.log('Fetching trade signals');
-    
-    // Cache signals for 1 minute to avoid excessive API calls
-    if (cachedSignals && cacheTime && (Date.now() - cacheTime < 60000)) {
-        console.log("Returning cached signals");
-        return cachedSignals;
-    }
+    console.log('Fetching trade signals from mock service');
+    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate latency
 
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_LATENCY / 2));
-    
-    // Simulate generating mock market data for each ticker
-    const signalPromises = tickers.map(async (ticker, index) => {
-        const mockMarketData: MarketData = {
-            ticker,
-            currentPrice: 100 + Math.random() * 2000,
-            volume: 100000 + Math.random() * 1000000,
-            rsi: 20 + Math.random() * 60, // Relative Strength Index
-            macd: (Math.random() - 0.5) * 5, // Moving Average Convergence Divergence
-            movingAverage50: 95 + Math.random() * 2000,
-            movingAverage200: 90 + Math.random() * 1900,
-        };
-        
-        try {
-            const signal = await generateTradeSignal(mockMarketData);
-            return {
-                id: index + 1,
-                ...signal,
-            };
-        } catch (error) {
-            console.error(`Failed to generate signal for ${ticker}:`, error);
-            return null;
+    const mockSignals = [
+        {
+            id: 1,
+            ticker: 'NIFTY24AUGFUT',
+            signal: 'BUY',
+            confidence: 88,
+            entryPrice: 22510.50,
+            targetPrice: 22650.00,
+            stopLoss: 22440.00,
+            reasoning: 'Strong bullish momentum indicated by MACD crossover and RSI above 60. Price is holding above the 50-period moving average.',
+        },
+        {
+            id: 2,
+            ticker: 'BANKNIFTY 24AUG48000CE',
+            signal: 'BUY',
+            confidence: 92,
+            entryPrice: 350.00,
+            targetPrice: 450.00,
+            stopLoss: 300.00,
+            reasoning: 'High open interest buildup and positive delta suggest strong upward potential. Implied volatility is increasing, favoring option buyers.',
+        },
+        {
+            id: 3,
+            ticker: 'RELIANCE',
+            signal: 'SELL',
+            confidence: 75,
+            entryPrice: 2890.00,
+            targetPrice: 2820.00,
+            stopLoss: 2925.00,
+            reasoning: 'Stock is overbought with RSI above 75. A bearish divergence pattern is forming after hitting a key resistance level.',
+        },
+        {
+            id: 4,
+            ticker: 'TCS',
+            signal: 'BUY',
+            confidence: 81,
+            entryPrice: 3855.00,
+            targetPrice: 3950.00,
+            stopLoss: 3810.00,
+            reasoning: 'Breakout above 50-day moving average with high volume. Trend indicators confirm bullish continuation.',
+        },
+        {
+            id: 5,
+            ticker: 'HDFCBANK',
+            signal: 'SELL',
+            confidence: 78,
+            entryPrice: 1680.00,
+            targetPrice: 1640.00,
+            stopLoss: 1695.00,
+            reasoning: 'Price broke below a key support level and the 200-day moving average, indicating a bearish trend.',
         }
-    });
+    ];
 
-    const resolvedSignals = await Promise.all(signalPromises);
-    const validSignals = resolvedSignals.filter(signal => signal !== null);
-
-    cachedSignals = validSignals;
-    cacheTime = Date.now();
-
-    return validSignals;
+    return mockSignals;
 }
+
 
 export async function runBacktest(model: string, dateRange: { from: Date; to: Date }) {
     console.log(`Running backtest for model ${model} from ${dateRange.from} to ${dateRange.to}`);
